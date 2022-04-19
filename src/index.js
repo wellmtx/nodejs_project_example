@@ -103,6 +103,8 @@ app.post("/deposito", function(re, res)
 {
 
     const conn = mysql.createConnection({host:"localhost", database:"nodejs_db", user:"root", password:""});
+    const body = re.body;
+    
 
 });
 
