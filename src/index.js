@@ -1,4 +1,5 @@
 const express = require("express");
+const res = require("express/lib/response");
 const mysql = require("mysql");
 
 const app = express();
@@ -99,12 +100,45 @@ app.get("/extrato/:cpf", function(re, res)
 
 });
 
-app.post("/deposito", function(re, res) 
+app.post("/deposit", function(re, res) 
 {
 
     const conn = mysql.createConnection({host:"localhost", database:"nodejs_db", user:"root", password:""});
-    const body = re.body;
-    
+    const {cpf, deposit} = re.body;
+    var account;
+
+    console.log("entrou")
+
+    conn.connect(function(err) 
+    {
+        console.log("chegou aqui")
+        if (err) throw err
+
+        conn.query("SELECT * FROM tb_users WHERE cpf=?", [cpf], function(err, result) 
+        {
+            console.log("fase1")
+            if(err) throw err;
+            if(result.length > 0) 
+            {
+                account = result[0];
+                depositValue = parseInt(account.saldo) + parseInt(deposit)
+
+                conn.query("UPDATE tb_users SET saldo=? WHERE cpf=?", [parseInt(depositValue), account.cpf], function(err, result) 
+                {
+                    console.log("fase2")
+                    if(err) throw err;
+                    conn.end();
+                    res.json({sucess: "Valor depositado com sucesso!", valorAnterior: account.saldo, valorAtual: depositValue});
+                });
+            }
+            if(result.length == 0) 
+            {
+                conn.end();
+                res.json({error: "CPF não encontrado!!"});
+            }
+        });
+
+    });
 
 });
 
