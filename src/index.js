@@ -1,5 +1,4 @@
 const express = require("express");
-const res = require("express/lib/response");
 const mysql = require("mysql");
 
 const app = express();
@@ -117,13 +116,26 @@ app.post("/deposit", function(re, res)
             if(result.length > 0) 
             {
                 account = result[0];
-                depositValue = parseInt(account.saldo) + parseInt(deposit)
+                var oldExtract = JSON.parse(account.extrato)
+                var newExtract = [];
+                var newAction = JSON.parse('{"action": "Depósito", "value": ' + deposit + '}');
+                var totalValueAccount = parseInt(account.saldo) + parseInt(deposit);
+                newExtract.push(oldExtract);
+                newExtract.push(newAction);
+                console.log(newExtract);
 
-                conn.query("UPDATE tb_users SET saldo=? WHERE cpf=?", [parseInt(depositValue), account.cpf], function(err, result) 
+                conn.query("UPDATE tb_users SET saldo=? WHERE cpf=?", [parseInt(totalValueAccount), account.cpf], function(err, result) 
                 {
                     if(err) throw err;
-                    conn.end();
-                    res.json({sucess: "Valor depositado com sucesso!", valorAnterior: account.saldo, valorAtual: depositValue});
+
+                    conn.query("UPDATE tb_users SET extrato=? WHERE cpf=?", [JSON.stringify(newExtract), account.cpf], function(err, result) 
+                    {
+                        if(err) throw err;
+
+                        console.log("SUCESSO");
+                    });
+
+                    res.json({sucess: "Valor depositado com sucesso!", valorAnterior: account.saldo, valorAtual: totalValueAccount});
                 });
             }
             if(result.length == 0) 
