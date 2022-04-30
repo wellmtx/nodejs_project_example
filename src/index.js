@@ -5,6 +5,8 @@ const app = express();
 
 app.use(express.json());
 
+const now = new Date;
+
 app.post("/account", function(re, res) 
 {
     const conn = mysql.createConnection({host:"localhost", database:"nodejs_db", user:"root", password:""});
@@ -12,10 +14,12 @@ app.post("/account", function(re, res)
 
     function insertAccount() 
     {
-        conn.query("INSERT INTO tb_users (name, password, cpf) VALUES ('"+ name +"', '"+ password +"', '"+ cpf +"')", function(err, result) 
+        var actionCreate = [{action: "Conta criada", date: now.getDate() + '/' + now.getMonth() + '/' + now.getFullYear(), hour: now.getHours() + ':' + now.getMinutes()}];
+        conn.query("INSERT INTO tb_users (name, password, cpf, extrato) VALUES (?, ?, ?, ?)", [name, password, cpf, JSON.stringify(actionCreate)], function(err, result) 
         {
 
             if(err) throw err
+            conn.end();
             res.json({response: "Usuário cadastrado com sucesso!"});
 
         });
@@ -31,6 +35,7 @@ app.post("/account", function(re, res)
 
             if(result.length > 0) 
             {
+                conn.end();
                 res.json({error: "CPF ja cadastrado"});
             } else {
                 insertAccount();
@@ -54,7 +59,6 @@ app.post("/account", function(re, res)
             if(err) throw err
             console.log("connected!");
             checkCPF()
-            conn.end();
 
         })
 
@@ -86,7 +90,8 @@ app.get("/extrato/:cpf", function(re, res)
                 {
                     nome: result[0].name,
                     cpf: result[0].cpf,
-                    saldo: result[0].saldo
+                    saldo: result[0].saldo,
+                    extrato: JSON.parse(result[0].extrato)
                 }
                 res.json(info);
             } else {
@@ -116,11 +121,14 @@ app.post("/deposit", function(re, res)
             if(result.length > 0) 
             {
                 account = result[0];
-                var oldExtract = JSON.parse(account.extrato)
+                var oldActions = JSON.parse(account.extrato)
+                var newAction = {action: "Depósito", value: deposit, hourDeposit: now.getHours + ':' + now.getMinutes};
                 var newExtract = [];
-                var newAction = JSON.parse('{"action": "Depósito", "value": ' + deposit + '}');
                 var totalValueAccount = parseInt(account.saldo) + parseInt(deposit);
-                newExtract.push(oldExtract);
+                oldActions.forEach(function(item, index) 
+                {
+                    newExtract.push(oldActions[index]);
+                });
                 newExtract.push(newAction);
                 console.log(newExtract);
 
@@ -131,6 +139,7 @@ app.post("/deposit", function(re, res)
                     conn.query("UPDATE tb_users SET extrato=? WHERE cpf=?", [JSON.stringify(newExtract), account.cpf], function(err, result) 
                     {
                         if(err) throw err;
+                        conn.end();
 
                         console.log("SUCESSO");
                     });
